@@ -30,11 +30,11 @@ module Metasploit
               service_name: 'mysql'
           }
 
-          # manage our behind the scenes socket. Close any existing one and open a new one
-          disconnect if self.sock
-          connect
-
           begin
+            # manage our behind the scenes socket. Close any existing one and open a new one
+            disconnect if self.sock
+            connect
+
             ::RbMysql.connect({
               :host           => host,
               :port           => port,
@@ -45,7 +45,13 @@ module Metasploit
               :password       => credential.private,
               :db             => ''
             })
-          rescue Errno::ECONNREFUSED
+
+          rescue Rex::HostUnreachable
+            result_options.merge!({
+              status: Metasploit::Model::Login::Status::UNABLE_TO_CONNECT,
+              proof: "Host was unreachable"
+            })
+          rescue Errno::ECONNREFUSED, Rex::ConnectionRefused
             result_options.merge!({
               status: Metasploit::Model::Login::Status::UNABLE_TO_CONNECT,
               proof: "Connection refused"
@@ -55,7 +61,7 @@ module Metasploit
                 status: Metasploit::Model::Login::Status::UNABLE_TO_CONNECT,
                 proof: "Connection timeout"
             })
-          rescue Errno::ETIMEDOUT
+          rescue Errno::ETIMEDOUT, Rex::ConnectionTimeout
             result_options.merge!({
                 status: Metasploit::Model::Login::Status::UNABLE_TO_CONNECT,
                 proof: "Operation Timed out"
